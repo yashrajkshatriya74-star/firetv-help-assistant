@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fire TV Assistant Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #171d26;
+    --panel-2: #1f2730;
+    --line: #2a323d;
+    --text: #eaedf2;
+    --text-dim: #8a94a3;
+    --accent: #3ea6ff;
+    --highlight: #ffc247;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #000;
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .tv {
+    width: 1000px;
+    max-width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--bg);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+  }
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--line);
+  }
+  .logo {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+    margin-right: 12px;
+  }
+  .nav-item {
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    padding: 6px 4px;
+    border-radius: 6px;
+    transition: box-shadow 150ms, color 150ms;
+  }
+  .nav-item.current { color: var(--text); font-weight: 600; }
+  .nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #voiceToggle {
+    background: var(--panel-2);
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  #voiceToggle.active {
+    color: #7CFFB2;
+    border-color: #2e5c42;
+  }
+  .content {
+    flex: 1;
+    padding: 20px 28px;
+    overflow: hidden;
+  }
+  .section-label {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+  }
+  .apps-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 26px;
+    padding: 4px;
+    border-radius: 10px;
+    transition: box-shadow 150ms;
+  }
+  .app-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.85);
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  .tile-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .tile {
+    width: 140px;
+    height: 80px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 120ms, transform 120ms;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    padding: 6px 8px;
+    box-sizing: border-box;
+  }
+  .tile:hover { border-color: var(--line); }
+  .tile.selected {
+    border-color: var(--accent);
+    transform: scale(1.04);
+  }
+  .tile-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.92);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .tile-progress {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(0,0,0,0.3);
+  }
+  .tile-progress span {
+    display: block;
+    height: 100%;
+    background: var(--highlight);
+  }
+  .highlight {
+    box-shadow: 0 0 0 3px var(--highlight), 0 0 24px 4px rgba(255,194,71,0.5);
+    cursor: pointer;
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px var(--highlight), 0 0 24px 4px rgba(255,194,71,0.5); }
+    50% { box-shadow: 0 0 0 3px var(--highlight), 0 0 34px 8px rgba(255,194,71,0.75); }
+  }
+  .highlight.confirmed {
+    animation: none;
+    box-shadow: 0 0 0 3px #7CFFB2, 0 0 24px 6px rgba(124,255,178,0.6);
+  }
+  .avatar-wrap {
+    position: absolute;
+    right: 24px;
+    bottom: 70px;
+    width: 200px;
+    height: 356px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 220ms ease, transform 220ms ease;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .panel {
+    position: absolute;
+    top: 0; right: 0;
+    width: 280px;
+    height: 100%;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    padding: 24px 20px;
+    transform: translateX(100%);
+    transition: transform 220ms ease;
+    z-index: 10;
+  }
+  .panel.open { transform: translateX(0); }
+  .panel h3 {
+    font-size: 0.95rem;
+    margin: 0 0 16px;
+    color: var(--text);
+  }
+  .back-btn {
+    display: inline-block;
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-bottom: 14px;
+    cursor: pointer;
+  }
+  .back-btn:hover { text-decoration: underline; }
+  .panel-item {
+    padding: 12px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    cursor: default;
+    border-left: 3px solid transparent;
+  }
+  .panel-item.highlight {
+    background: rgba(255,194,71,0.18);
+    border-left: 3px solid var(--highlight);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: none;
+    animation: panelPulse 1.1s ease-in-out infinite;
+    cursor: pointer;
+  }
+  @keyframes panelPulse {
+    0%, 100% { background: rgba(255,194,71,0.18); }
+    50% { background: rgba(255,194,71,0.32); }
+  }
+  .panel-item.confirmed {
+    animation: none;
+    background: rgba(124,255,178,0.22);
+    border-left-color: #7CFFB2;
+  }
+  .pin-mock {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .pin-dot {
+    width: 36px;
+    height: 44px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+  }
+  .pin-confirm {
+    margin-top: 18px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .pin-dot.filled {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 16px;
+    width: 160px;
+  }
+  .key {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 0;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .key:hover { border-color: var(--accent); }
+  .avatar-wrap.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .avatar-wrap video.avlayer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: 50% 100%;
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+  .avatar-wrap video.avlayer.on {
+    opacity: 1;
+  }
+  .listening-badge {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.6);
+    color: #7CFFB2;
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    display: none;
+    white-space: nowrap;
+  }
+  .avatar-wrap.listening .listening-badge { display: block; }
+  .controls {
+    display: flex;
+    gap: 8px;
+    padding: 14px 28px;
+    border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .controls .label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-right: 2px;
+    width: 100%;
+  }
+  button.ask {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  button.ask:hover { border-color: var(--accent); }
+  button.stop {
+    background: transparent;
+    color: #ff6b6b;
+    border: 1px solid #5a2c2c;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+    margin-left: auto;
+  }
+  button.stop:hover { border-color: #ff6b6b; }
+  .note {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: 16px;
+    text-align: center;
+    max-width: 1000px;
+  }
+  .tile-row { overflow-x: auto; padding: 4px 2px; scrollbar-width: none; }
+  .tile-row::-webkit-scrollbar { display: none; }
+  .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.65), transparent 55%); pointer-events: none; }
+  .tile-title { position: relative; z-index: 2; }
+  .age-tag { position: absolute; top: 5px; right: 5px; z-index: 2; font-size: 0.62rem; font-weight: 700; background: rgba(0,0,0,0.7); color: #fff; padding: 2px 5px; border-radius: 4px; }
+  .player-modal { position: absolute; inset: 0; background: #000; z-index: 60; display: none; }
+  .player-modal.open { display: block; }
+  .player-modal iframe { width: 100%; height: 100%; border: 0; }
+  .player-close { position: absolute; top: 12px; right: 14px; z-index: 61; background: rgba(0,0,0,0.65); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 58px; flex-shrink: 0; }
+  .app-name { font-size: 0.62rem; color: var(--text-dim); white-space: nowrap; }
+  .apps-row { margin-bottom: 14px; }
+  .tile-title { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }
+  .tile::after { display: none; }
+  .avatar-wrap { bottom: 12px; }
+  .controls { position: absolute; left: 0; right: 0; bottom: 0; z-index: 15; background: rgba(15,19,26,0.97); border-top: 1px solid var(--line); padding: 14px 240px 16px 28px; transform: translateY(105%); transition: transform 260ms ease; box-shadow: 0 -12px 30px rgba(0,0,0,0.45); }
+  .controls.open { transform: translateY(0); }
+  .controls .label { display: flex; justify-content: space-between; align-items: center; }
+  .sheet-close { background: none; border: none; color: var(--text-dim); font-size: 0.95rem; cursor: pointer; padding: 0 4px; }
+  .nav-item { cursor: pointer; }
+  .profile-btn { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,#3ea6ff,#1e40af); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; cursor: pointer; margin-left: 4px; }
+  .panel { top: var(--navh, 61px); height: auto; bottom: 0; }
+  .panel-item { cursor: pointer; }
+  .panel-item b { color: var(--text); font-weight: 600; margin-left: 6px; }
+  .wifi-state, .prof-state, .lang-state { color: #7CFFB2; font-size: 0.78rem; }
+  .screen { position: absolute; left: 0; right: 0; top: var(--navh, 61px); bottom: 0; background: var(--bg); z-index: 8; display: none; }
+  .screen.full { top: 0; }
+  .screen.open { display: flex; }
+  .screen-btn { position: absolute; top: 14px; left: 16px; z-index: 2; background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .screen-btn.right { left: auto; right: 16px; }
+  #searchScreen { gap: 28px; padding: 18px 28px; }
+  .search-left { width: 372px; flex-shrink: 0; }
+  .search-input { height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 0 14px; display: flex; align-items: center; font-size: 0.95rem; letter-spacing: 0.08em; }
+  .caret { width: 2px; height: 18px; background: var(--accent); margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .keyboard { display: grid; grid-template-columns: repeat(9, 36px); gap: 6px; margin-top: 14px; padding: 6px; border-radius: 10px; }
+  .kb-key { height: 34px; display: flex; align-items: center; justify-content: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; font-size: 0.8rem; cursor: pointer; user-select: none; }
+  .kb-key:hover { border-color: var(--accent); }
+  .kb-key.wide6 { grid-column: span 6; }
+  .kb-key.wide3 { grid-column: span 3; }
+  .search-right { flex: 1; min-width: 0; }
+  .search-results { display: flex; flex-wrap: wrap; gap: 12px; min-height: 96px; padding: 4px; border-radius: 10px; }
+  .result { width: 140px; }
+  .result-title { font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #appScreen { align-items: center; justify-content: center; background: linear-gradient(160deg,#141b26,#0b0f14); }
+  .app-hero { text-align: center; }
+  .app-hero-icon { width: 96px; height: 96px; border-radius: 22px; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; }
+  .app-hero-name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.3rem; }
+  #mockPlayer { align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(135deg,#1a2a3a,#0a0d12 70%); }
+  .mock-title { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.4rem; opacity: 0.85; }
+  .mock-sub { position: absolute; bottom: 70px; left: 0; right: 0; text-align: center; font-size: 1rem; text-shadow: 0 1px 4px #000; min-height: 24px; }
+  #remoteScreen { align-items: center; justify-content: center; background: #0d1117; }
+  .remote-wrap { text-align: center; }
+  .remote-status { font-size: 0.9rem; color: #ff9b9b; margin-bottom: 14px; }
+  .remote-status.ok { color: #7CFFB2; }
+  .remote { width: 130px; margin: 0 auto; padding: 18px 14px; border-radius: 40px; background: linear-gradient(180deg,#232a35,#161b23); border: 1px solid var(--line); }
+  .remote-dpad { width: 84px; height: 84px; border-radius: 50%; background: #10151c; border: 1px solid var(--line); margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; }
+  .remote-ok { width: 34px; height: 34px; border-radius: 50%; background: #2c3542; }
+  .remote-row { display: flex; justify-content: space-between; align-items: center; }
+  .remote-btn { width: 30px; height: 30px; border-radius: 50%; background: #2c3542; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+  #homeBtn { width: 40px; height: 40px; position: relative; overflow: hidden; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; font-size: 1rem; }
+  .hold-fill { position: absolute; inset: 0; background: var(--highlight); transform: scaleX(0); transform-origin: left; opacity: 0.55; }
+  #homeBtn.holding .hold-fill { transform: scaleX(1); transition: transform 2s linear; }
+  .hold-label { position: relative; z-index: 1; }
+  .remote-hint { margin-top: 16px; font-size: 0.8rem; color: var(--text-dim); }
+  .ctx-menu { position: absolute; z-index: 30; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: none; min-width: 160px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .ctx-menu.open { display: block; }
+  .ctx-item { padding: 9px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; border-left: 3px solid transparent; }
+  .ctx-item:hover { background: var(--panel-2); }
+  .ctx-item.highlight { background: rgba(255,194,71,0.18); box-shadow: none; border-left: 3px solid var(--highlight); font-weight: 600; animation: panelPulse 1.1s ease-in-out infinite; }
+  .toast { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: rgba(0,0,0,0.88); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; opacity: 0; transition: opacity 0.25s, transform 0.25s; z-index: 50; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .restart-overlay { position: absolute; inset: 0; background: #000; z-index: 45; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #fff; font-size: 0.9rem; }
+  .restart-overlay.open { display: flex; }
+  .spinner { width: 38px; height: 38px; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .intro { position: absolute; left: 50%; top: 50%; width: 58%; transform: translate(-50%, -50%); z-index: 40; opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0.4s; pointer-events: none; text-align: center; }
+  .intro.show { opacity: 1; visibility: visible; }
+  .intro-glow { position: absolute; inset: -12%; background: radial-gradient(ellipse at center, rgba(90,125,170,0.42), rgba(90,125,170,0) 68%); }
+  .intro video { position: relative; width: 100%; display: block; opacity: 0.88; filter: drop-shadow(0 0 14px rgba(62,166,255,0.45)); -webkit-mask-image: radial-gradient(ellipse 70% 74% at 50% 50%, #000 58%, transparent 100%); mask-image: radial-gradient(ellipse 70% 74% at 50% 50%, #000 58%, transparent 100%); }
+  .intro-caption { position: relative; margin-top: -4%; font-size: 0.9rem; font-weight: 600; text-shadow: 0 1px 6px #000; }
+  .intro-skip { position: absolute; right: -4%; top: -6%; pointer-events: auto; background: rgba(0,0,0,0.55); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 4px 12px; font-size: 0.75rem; cursor: pointer; font-family: 'Inter', sans-serif; }
+  #voiceToggle.hint { box-shadow: 0 0 0 3px var(--highlight), 0 0 24px 4px rgba(255,194,71,0.5); animation: pulse 1.1s ease-in-out infinite; color: var(--text); }
+  .intro { left: 0; top: 0; right: 0; bottom: 0; width: auto; transform: none; }
+  .intro-glow { inset: 0; background: radial-gradient(ellipse at center, rgba(95,130,175,0.40) 0%, rgba(10,15,24,0.80) 100%); }
+  .intro video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; -webkit-mask-image: none; mask-image: none; filter: brightness(1.08) contrast(1.05) drop-shadow(0 0 16px rgba(62,166,255,0.5)); }
+  .intro video.intro-bloom { filter: blur(22px) brightness(1.8) saturate(1.5); mix-blend-mode: screen; opacity: 0.55; }
+  .intro-caption { position: absolute; left: 0; right: 0; bottom: 9%; margin: 0; }
+  .intro-skip { right: 16px; top: 14px; }
+  .build-tag { margin-top: 8px; font-size: 0.65rem; color: #4b5563; text-align: center; font-family: monospace; }
+  .kfocus { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px rgba(255,255,255,0.18), 0 0 22px rgba(255,255,255,0.4); }
+  .tile.kfocus { border-radius: 8px; }
+  #askScreen { gap: 28px; padding: 18px 28px; }
+  .ask-left { width: 372px; flex-shrink: 0; }
+  .ask-right { flex: 1; min-width: 0; padding-right: 230px; }
+  .ask-chips { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin: 6px 0 16px; }
+  .chip { padding: 8px 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel-2); font-size: 0.78rem; cursor: pointer; }
+  .chip:hover { border-color: var(--accent); }
+  .ask-answer { font-size: 0.95rem; line-height: 1.5; min-height: 70px; }
+  .ask-answer.thinking { color: var(--text-dim); animation: blink 1.2s steps(1) infinite; }
+  .ask-source { font-size: 0.68rem; color: var(--text-dim); margin-top: 10px; }
+  .kb-key.wide2 { grid-column: span 2; }
+  .kb-key.ask-key { background: var(--accent); border-color: var(--accent); color: #04121f; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div>
+<div class="tv">
+  <div class="nav">
+    <span class="logo">fire tv</span>
+    <span class="nav-item current" id="navHome">Home</span>
+    <span class="nav-item" id="navSearch">Search</span>
+    <span class="nav-item">Live</span>
+    <span class="nav-item" id="navSettings">Settings</span>
+    <div class="nav-right">
+      <button id="voiceToggle">🎤 Press and ask</button>
+      <div class="profile-btn" id="profileBtn">Y</div>
+    </div>
+  </div>
+  <div class="content">
+    <p class="section-label">Your Apps</p>
+    <div class="apps-row" id="appsRow"></div>
+    <p class="section-label">Continue Watching</p>
+    <div class="tile-row" id="filmRow1"></div>
+    <p class="section-label">Recommended for You</p>
+    <div class="tile-row" id="filmRow2"></div>
+  </div>
+  <div class="avatar-wrap" id="avatarWrap">
+    <span class="listening-badge">Listening…</span>
+    <video id="avatarVideoA" class="avlayer" playsinline></video>
+    <video id="avatarVideoB" class="avlayer" playsinline></video>
+  </div>
+
+  <div class="screen" id="searchScreen">
+    <div class="search-left">
+      <div class="search-input"><span id="searchText"></span><span class="caret"></span></div>
+      <div class="keyboard" id="keyboard"></div>
+    </div>
+    <div class="search-right">
+      <p class="section-label" id="searchLabel">Start typing a film name</p>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+
+  <div class="screen" id="askScreen">
+    <div class="ask-left">
+      <div class="search-input"><span id="askText"></span><span class="caret"></span></div>
+      <div class="keyboard" id="askKeyboard"></div>
+    </div>
+    <div class="ask-right">
+      <p class="section-label">Ask me anything about your Fire TV</p>
+      <div class="ask-chips" id="askChips"></div>
+      <div class="ask-answer" id="askAnswer"></div>
+      <div class="ask-source" id="askSource"></div>
+    </div>
+  </div>
+
+  <div class="screen full" id="appScreen">
+    <button class="screen-btn" id="appHomeBtn">⌂ Home</button>
+    <div class="app-hero"><div class="app-hero-icon" id="appHeroIcon"></div><div class="app-hero-name" id="appHeroName"></div></div>
+  </div>
+
+  <div class="screen full" id="mockPlayer">
+    <button class="screen-btn" id="playerExit">✕ Exit</button>
+    <button class="screen-btn right" id="menuBtn">☰ Menu</button>
+    <div class="mock-title">Mountain Trail</div>
+    <div class="mock-sub" id="mockSub"></div>
+  </div>
+
+  <div class="screen full" id="remoteScreen">
+    <button class="screen-btn" id="remoteExit">✕ Close</button>
+    <div class="remote-wrap">
+      <div class="remote-status" id="remoteStatus">Remote not responding</div>
+      <div class="remote">
+        <div class="remote-dpad"><div class="remote-ok"></div></div>
+        <div class="remote-row">
+          <div class="remote-btn">&larr;</div>
+          <div class="remote-btn" id="homeBtn"><span class="hold-fill"></span><span class="hold-label">⌂</span></div>
+          <div class="remote-btn">☰</div>
+        </div>
+      </div>
+      <div class="remote-hint">Press and hold Home for 2 seconds</div>
+    </div>
+  </div>
+
+  <div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-item" id="ctxMove">Move to front</div>
+    <div class="ctx-item" id="ctxRemove">Remove from Home</div>
+  </div>
+  <div class="restart-overlay" id="restartOverlay"><div class="spinner"></div><div>Restarting…</div></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="intro" id="intro">
+    <div class="intro-glow"></div>
+    <video id="introBloom" class="intro-bloom" playsinline muted preload="auto"></video>
+    <video id="introVideo" playsinline preload="auto"></video>
+    <div class="intro-caption">Press the mic button on your remote to ask for help</div>
+    <button class="intro-skip" id="introSkip">Skip</button>
+  </div>
+
+  <div class="player-modal" id="playerModal">
+    <button class="player-close" id="playerClose">✕ Close</button>
+    <iframe id="playerFrame" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+  </div>
+
+  <div class="panel" id="settingsPanel">
+    <span class="back-btn" id="settingsBack" data-back="">&larr; Back</span>
+    <h3>Settings</h3>
+    <div class="panel-item" id="prefItem">Preferences</div>
+    <div class="panel-item" id="netItem">Network</div>
+    <div class="panel-item" id="myfireItem">My Fire TV</div>
+    <div class="panel-item" id="displayItem">Display &amp; Sounds</div>
+  </div>
+
+  <div class="panel" id="prefPanel">
+    <span class="back-btn" id="prefBack" data-back="settingsPanel">&larr; Back</span>
+    <h3>Preferences</h3>
+    <div class="panel-item" id="parentalItem">Parental Controls</div>
+    <div class="panel-item">Alexa Privacy</div>
+    <div class="panel-item">Data Monitoring</div>
+  </div>
+
+  <div class="panel" id="pinPanel">
+    <span class="back-btn" id="pinBack" data-back="prefPanel">&larr; Back</span>
+    <h3>Set a PIN</h3>
+    <div class="pin-mock" id="pinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="keypad" id="keypad">
+      <div class="key">1</div><div class="key">2</div><div class="key">3</div>
+      <div class="key">4</div><div class="key">5</div><div class="key">6</div>
+      <div class="key">7</div><div class="key">8</div><div class="key">9</div>
+      <div class="key" id="keyClear">C</div><div class="key">0</div><div class="key" id="keyBack">&larr;</div>
+    </div>
+    <button class="pin-confirm" id="pinConfirmBtn">Confirm PIN</button>
+  </div>
+
+  <div class="panel" id="networkPanel">
+    <span class="back-btn" data-back="settingsPanel">&larr; Back</span>
+    <h3>Network</h3>
+    <div class="panel-item" id="wifiHome" data-ssid="Home_WiFi_5G">Home_WiFi_5G<span class="wifi-state">  ✓ Connected</span></div>
+    <div class="panel-item" data-ssid="Guest_Network">Guest_Network<span class="wifi-state"></span></div>
+    <div class="panel-item" data-ssid="Office_5G">Office_5G<span class="wifi-state"></span></div>
+  </div>
+
+  <div class="panel" id="myFirePanel">
+    <span class="back-btn" data-back="settingsPanel">&larr; Back</span>
+    <h3>My Fire TV</h3>
+    <div class="panel-item">About</div>
+    <div class="panel-item" id="restartItem">Restart</div>
+    <div class="panel-item">Reset to Factory Defaults</div>
+  </div>
+
+  <div class="panel" id="displayPanel">
+    <span class="back-btn" data-back="settingsPanel">&larr; Back</span>
+    <h3>Display &amp; Sounds</h3>
+    <div class="panel-item" id="resItem">Video Resolution:<b id="resVal">Auto</b></div>
+    <div class="panel-item" id="dolbyItem">Dolby Audio:<b id="dolbyVal">On</b></div>
+    <div class="panel-item">Screen Saver</div>
+  </div>
+
+  <div class="panel" id="profilePanel">
+    <span class="back-btn" data-back="">&larr; Back</span>
+    <h3>Who's watching?</h3>
+    <div class="panel-item" id="profYash">Yashraj <span class="prof-state">✓</span></div>
+    <div class="panel-item" id="guestProfile">Guest <span class="prof-state"></span></div>
+    <div class="panel-item" id="kidsProfile">Kids <span class="prof-state"></span></div>
+  </div>
+
+  <div class="panel" id="menuPanel">
+    <span class="back-btn" data-back="">&larr; Back</span>
+    <h3>Menu</h3>
+    <div class="panel-item" id="audioSubItem">Audio &amp; Subtitles</div>
+    <div class="panel-item">Playback Speed</div>
+    <div class="panel-item">Quality</div>
+  </div>
+
+  <div class="panel" id="langPanel">
+    <span class="back-btn" data-back="menuPanel">&larr; Back</span>
+    <h3>Subtitles</h3>
+    <div class="panel-item" data-lang="Off">Off <span class="lang-state"></span></div>
+    <div class="panel-item" data-lang="English">English <span class="lang-state"></span></div>
+    <div class="panel-item" id="hindiItem" data-lang="Hindi">Hindi <span class="lang-state"></span></div>
+    <div class="panel-item" data-lang="Spanish">Spanish <span class="lang-state"></span></div>
+  </div>
+
+  <div class="controls">
+    <span class="label">Ask her (tap one, or just speak):<button class="sheet-close" id="sheetClose">✕</button></span>
+    <button class="ask" data-topic="__type">✍ Type a question</button>
+    <button class="ask" data-topic="search">Search</button>
+    <button class="ask" data-topic="apps">Switch apps</button>
+    <button class="ask" data-topic="buffering">Buffering fix</button>
+    <button class="ask" data-topic="parental">Parental controls</button>
+    <button class="ask" data-topic="subtitles">Subtitles</button>
+    <button class="ask" data-topic="rearrange">Rearrange apps</button>
+    <button class="ask" data-topic="wifi">Wi-Fi settings</button>
+    <button class="ask" data-topic="remote">Remote pairing</button>
+    <button class="ask" data-topic="voicesearch">Voice search</button>
+    <button class="ask" data-topic="display">Display/audio</button>
+    <button class="ask" data-topic="restart">Restart</button>
+    <button class="ask" data-topic="profiles">Profiles</button>
+    <button class="stop" id="stopBtn">Stop</button>
+  </div>
+</div>
+<div class="build-tag" id="buildTag">build 20-oct-a</div>
+</div>
+
+<script>
+  const VIDEOS = {
+    remote_intro: "remote_intro.webm",
+    idle1: "idle1.webm",
+    listen1: "listen1.webm",
+    listen2: "listen2.webm",
+    search: "search.webm",
+    apps: "apps.webm",
+    buffering: "buffering.webm",
+    features: "features.webm",
+    remote: "remote.webm",
+    restart: "restart.webm",
+    wifi: "wifi.webm",
+    display: "display.webm",
+    rearrange: "rearrange.webm",
+    profiles: "profiles.webm",
+    voicesearch: "voicesearch.webm",
+    subtitles: "subtitles.webm",
+    parental_a: "parental_a.webm",
+    parental_b: "parental_b.webm"
+  };
+
+  // ---- what she understands when you speak (most specific topics first) ----
+  const TOPIC_KEYWORDS = {
+    voicesearch: ['voice', 'alexa', 'microphone'],
+    parental: ['parental', 'pin', 'kids', 'restrict'],
+    subtitles: ['subtitle', 'caption', 'language'],
+    rearrange: ['rearrange', 'organize', 'hide app', 'move app'],
+    apps: ['switch app', 'switch apps', 'change app'],
+    buffering: ['buffer', 'lag', 'slow', 'freeze'],
+    wifi: ['wifi', 'wi-fi', 'network', 'internet'],
+    remote: ['remote', 'pair', 'pairing'],
+    display: ['display', 'picture', 'sound', 'audio'],
+    restart: ['restart', 'reset', 'reboot'],
+    profiles: ['profile', 'family', 'switch user'],
+    search: ['search', 'find', 'movie', 'show']
+  };
+  function matchTopic(text) {
+    text = text.toLowerCase();
+    for (const [topic, words] of Object.entries(TOPIC_KEYWORDS)) {
+      if (words.some(w => text.includes(w))) return topic;
+    }
+    return null;
+  }
+
+  // ---- DOM refs & state ----
+  const tv = document.querySelector('.tv');
+  const avatarWrap = document.getElementById('avatarWrap');
+  const videoA = document.getElementById('avatarVideoA');
+  const videoB = document.getElementById('avatarVideoB');
+  const sheet = document.querySelector('.controls');
+  const voiceToggle = document.getElementById('voiceToggle');
+  const profileBtn = document.getElementById('profileBtn');
+  const appsRow = document.getElementById('appsRow');
+  const searchScreen = document.getElementById('searchScreen');
+  const searchText = document.getElementById('searchText');
+  const searchLabel = document.getElementById('searchLabel');
+  const searchResults = document.getElementById('searchResults');
+  const appScreen = document.getElementById('appScreen');
+  const mockPlayer = document.getElementById('mockPlayer');
+  const mockSub = document.getElementById('mockSub');
+  const remoteScreen = document.getElementById('remoteScreen');
+  const remoteStatus = document.getElementById('remoteStatus');
+  const ctxMenu = document.getElementById('ctxMenu');
+  const restartOverlay = document.getElementById('restartOverlay');
+  const toastEl = document.getElementById('toast');
+  const playerModal = document.getElementById('playerModal');
+  const playerFrame = document.getElementById('playerFrame');
+
+  let activeVideo = videoA;
+  let bufferVideo = videoB;
+  let currentHighlighted = null;
+  let flow = null;          // the guided tutorial that is running, if any
+  let idleTimeout = null;
+  let narrationDone = false;
+  let pendingReady = null;
+
+  const SILENT_CLIPS = new Set(['idle1', 'listen1', 'listen2']); // gesture-only clips
+  const IDLE_CLIPS = ['idle1'];
+  const LISTENING_CLIPS = ['listen1', 'listen2'];
+  function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // ---- data ----
+  const DEFAULT_APPS = [
+    { name: 'Lumo', grad: 'linear-gradient(135deg,#ff6b6b,#c0392b)', glyph: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z" fill="#fff"/>' },
+    { name: 'Melo', grad: 'linear-gradient(135deg,#4ecdc4,#1a7f78)', glyph: '<path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/>' },
+    { name: 'Pixel Park', grad: 'linear-gradient(135deg,#a78bfa,#6d28d9)', glyph: '<rect x="3" y="8" width="18" height="10" rx="4"/><path d="M8 11v4M6 13h4"/><circle cx="15.5" cy="12" r="1" fill="#fff"/><circle cx="17.8" cy="14.2" r="1" fill="#fff"/>' },
+    { name: 'Kiddo', grad: 'linear-gradient(135deg,#fbbf24,#b45309)', glyph: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>' },
+    { name: 'Daybreak', grad: 'linear-gradient(135deg,#60a5fa,#1e40af)', glyph: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 16h5"/>' },
+    { name: 'Flexi', grad: 'linear-gradient(135deg,#34d399,#047857)', glyph: '<path d="M3 12h4l2-5 4 10 2-5h6"/>' }
+  ];
+  let APPS = DEFAULT_APPS.slice();
+
+  // My films. Add `poster: 'url'` to any entry to override the thumbnail,
+  // and change `title` once the real titles are known.
+  const FILMS = [
+    { title: 'Film 1', yt: '2fl_jMCBJh8' },
+    { title: 'Film 2', yt: 'kScUS9iYYjY' },
+    { title: 'Film 3', yt: 'fJijjKc4S4E' },
+    { title: 'Film 4', yt: 'nXmVjtiLdio' },
+    { title: 'Film 5', yt: 'N0hvONU_RFo' },
+    { title: 'Film 6', yt: 'omos3BcIbpM' },
+    { title: 'Film 7', yt: 'EMYe2fDCVQ0' },
+    { title: 'Film 8', yt: 'ivYg-rg0Rt4' },
+    { title: 'Film 9', yt: '_QZawZNEt6I' },
+    { title: 'Film 10', yt: 'LnEVzz6BZJM' },
+    { title: 'Film 11', yt: 'cbf8urwW3VY' },
+    { title: "The Mother's Day Of War", drive: '19riYPjDcYbROuUNEM6FwKlDtCY8r9qBz', age: '16+', poster: 'data:image/jpeg;base64,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' }
+  ];
+  const TILE_GRADIENTS = [
+    'linear-gradient(135deg,#ef476f,#7a1f3d)', 'linear-gradient(135deg,#118ab2,#06324a)',
+    'linear-gradient(135deg,#ffd166,#9c6b05)', 'linear-gradient(135deg,#06d6a0,#0a5c46)',
+    'linear-gradient(135deg,#9d4edd,#4a1a73)', 'linear-gradient(135deg,#f72585,#7a0c3c)',
+    'linear-gradient(135deg,#4895ef,#143d7a)', 'linear-gradient(135deg,#f3722c,#8a3908)',
+    'linear-gradient(135deg,#6c757d,#212529)'
+  ];
+  const LANG_LINES = {
+    Off: '',
+    English: "Welcome back. Let's begin.",
+    Hindi: 'वापस स्वागत है। चलिए शुरू करें।',
+    Spanish: 'Bienvenido de nuevo. Empecemos.'
+  };
+
+  // ---- avatar video: two layers, so there is never a blank gap between clips ----
+  const BLOBS = {};              // clips already downloaded into memory, so switching is instant
+  let preloadStarted = false;
+  let pendingSwap = null;        // a swap that has started but whose new clip is not on screen yet
+
+  async function preloadClips() {
+    if (preloadStarted) return;
+    preloadStarted = true;
+    const order = ['idle1', 'listen1', 'listen2'].concat(Object.keys(VIDEOS));
+    for (const key of order) {
+      const url = VIDEOS[key];
+      if (!url || key === 'remote_intro' || BLOBS[key] || url.startsWith('data:')) continue;
+      try {
+        const res = await fetch(url);
+        if (res.ok) BLOBS[key] = URL.createObjectURL(await res.blob());
+      } catch (e) { /* keep using the direct URL for this clip */ }
+    }
+  }
+
+  function playClip(key, { loop = false, muted } = {}) {
+    const url = BLOBS[key] || VIDEOS[key];
+    if (!url) return;
+    // drop any clip that was still loading, and silence the outgoing one right away
+    if (pendingReady) { bufferVideo.removeEventListener('canplay', pendingReady); pendingReady = null; }
+    // if the last swap never reached the screen, go back to the layer that is still visible
+    if (pendingSwap) { activeVideo = pendingSwap.outgoing; bufferVideo = pendingSwap.incoming; pendingSwap = null; }
+    activeVideo.pause();
+    bufferVideo.pause();
+    const silent = muted !== undefined ? muted : SILENT_CLIPS.has(key);
+    if (!silent) narrationDone = false;
+    bufferVideo.muted = silent;
+    bufferVideo.loop = loop;
+    bufferVideo.src = url;
+    bufferVideo.load();
+    const onReady = () => {
+      bufferVideo.removeEventListener('canplay', onReady);
+      pendingReady = null;
+      const incoming = bufferVideo;
+      const outgoing = activeVideo;
+      const p = incoming.play();
+      if (p && p.catch) p.catch(() => {});
+      activeVideo = incoming;
+      bufferVideo = outgoing;
+      const swap = { incoming, outgoing };
+      pendingSwap = swap;
+      let shown = false;
+      // fade the new clip in only once its first frame is really painted;
+      // the old frame stays up until then, so she never disappears
+      const show = () => {
+        if (shown || pendingSwap !== swap) return;
+        shown = true;
+        pendingSwap = null;
+        incoming.classList.add('on');
+        setTimeout(() => { if (outgoing !== activeVideo) outgoing.classList.remove('on'); }, 250);
+      };
+      if (incoming.requestVideoFrameCallback) incoming.requestVideoFrameCallback(show);
+      setTimeout(show, 700); // safety net
+    };
+    pendingReady = onReady;
+    bufferVideo.addEventListener('canplay', onReady);
+  }
+
+  function scheduleIdleTimeout(ms) {
+    clearTimeout(idleTimeout);
+    idleTimeout = setTimeout(() => hideAvatar({ keepUI: true }), ms || 15000);
+  }
+
+  function goIdle() {
+    avatarWrap.classList.remove('listening');
+    avatarWrap.classList.add('visible');
+    playClip(pickRandom(IDLE_CLIPS), { loop: true });
+    scheduleIdleTimeout();
+  }
+
+  function playListeningGesture() {
+    clearTimeout(idleTimeout);
+    avatarWrap.classList.add('visible', 'listening');
+    playClip(pickRandom(LISTENING_CLIPS), { loop: true });
+  }
+
+  function hideAvatar(opts) {
+    const keepUI = !!(opts && opts.keepUI === true);
+    clearTimeout(idleTimeout);
+    closeSheet();
+    abortAsk();
+    stopAnswerAudio();
+    if (pendingReady) { bufferVideo.removeEventListener('canplay', pendingReady); pendingReady = null; }
+    avatarWrap.classList.remove('visible', 'listening');
+    videoA.pause();
+    videoB.pause();
+    pendingSwap = null;
+    setTimeout(() => {
+      if (!avatarWrap.classList.contains('visible')) { videoA.classList.remove('on'); videoB.classList.remove('on'); }
+    }, 350);
+    cancelFlow();
+    if (!keepUI) resetUI();
+  }
+
+  // ---- UI helpers ----
+  function clearHighlight() {
+    document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+    currentHighlighted = null;
+  }
+  function closeAllPanels() { document.querySelectorAll('.panel.open').forEach(p => p.classList.remove('open')); }
+  function openPanel(id) { closeAllPanels(); document.getElementById(id).classList.add('open'); }
+  function closeScreens() { document.querySelectorAll('.screen.open').forEach(s => s.classList.remove('open')); }
+  function hideCtx() { ctxMenu.classList.remove('open'); }
+  function resetUI() {
+    cancelFlow();
+    stopAnswerAudio();
+    abortAsk();
+    closeAllPanels();
+    closeScreens();
+    hideCtx();
+    restartOverlay.classList.remove('open');
+  }
+  let toastTimer = null;
+  function toast(msg, ms) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms || 2200);
+  }
+  function syncNavHeight() { tv.style.setProperty('--navh', document.querySelector('.nav').offsetHeight + 'px'); }
+  function iconSvg(glyph, size) {
+    return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + glyph + '</svg>';
+  }
+
+  // Suggestions slide up from the bottom only when she is summoned.
+  function openSheet() { sheet.classList.add('open'); }
+  function closeSheet() { sheet.classList.remove('open'); }
+  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+  sheet.querySelectorAll('button.ask').forEach(b => b.addEventListener('click', () => {
+    closeSheet();
+    stopListening();
+    if (b.dataset.topic === '__type') openAsk(); else startFlow(b.dataset.topic);
+  }));
+  document.getElementById('stopBtn').addEventListener('click', () => hideAvatar());
+
+  // ---- guided tutorials: she talks, the next thing to press glows, the UI really works ----
+  function stepTarget(step) {
+    return typeof step.target === 'function' ? step.target() : document.querySelector(step.target);
+  }
+  function showStep() {
+    clearHighlight();
+    if (!flow) return;
+    const el = stepTarget(flow.def.steps[flow.i]);
+    if (el) { el.classList.add('highlight'); currentHighlighted = el; }
+    if (el && kbdMode) { const t = highlightFocusTarget(); if (t) setKeyFocus(t); }
+  }
+  function cancelFlow() { flow = null; clearHighlight(); }
+
+  function startFlow(name) {
+    const def = FLOWS[name];
+    if (!def) return;
+    clearTimeout(idleTimeout);
+    resetUI();
+    if (def.setup) def.setup();
+    flow = { def, i: 0 };
+    avatarWrap.classList.remove('listening');
+    avatarWrap.classList.add('visible');
+    playClip(def.clip, { loop: false });
+    showStep();
+  }
+  function advanceFlow() {
+    if (!flow) return;
+    flow.i += 1;
+    if (flow.i >= flow.def.steps.length) {
+      cancelFlow();
+      if (narrationDone) goIdle(); // otherwise the clip's own ending sends her to idle
+      return;
+    }
+    const step = flow.def.steps[flow.i];
+    if (step.clip) playClip(step.clip, { loop: false });
+    showStep();
+    if (narrationDone && !step.clip) scheduleIdleTimeout(45000);
+  }
+  function stepVisible(el) {
+    if (!el) return false;
+    const p = el.closest('.panel');
+    if (p && !p.classList.contains('open')) return false;
+    const s = el.closest('.screen');
+    if (s && !s.classList.contains('open')) return false;
+    if (el.closest('.ctx-menu') && !ctxMenu.classList.contains('open')) return false;
+    return true;
+  }
+  // Back button: step the tutorial back to the nearest step that is on screen again.
+  function flowBack() {
+    if (!flow) return;
+    flow.i = Math.max(0, flow.i - 1);
+    while (flow.i > 0 && !stepVisible(stepTarget(flow.def.steps[flow.i]))) flow.i -= 1;
+    showStep();
+  }
+  // Steps marked `manual` are completed by their own action (typing, holding), not a plain click.
+  function flowTick(id) {
+    if (flow && currentHighlighted && currentHighlighted.id === id) advanceFlow();
+  }
+  document.addEventListener('click', (e) => {
+    if (!flow) return;
+    if (flow.def.steps[flow.i].manual) return;
+    if (currentHighlighted && currentHighlighted.contains(e.target)) advanceFlow();
+  });
+
+  // The narration ending does not end the tutorial: she stands by while you follow the steps.
+  [videoA, videoB].forEach(v => v.addEventListener('ended', (e) => {
+    if (e.target !== activeVideo) return;
+    narrationDone = true;
+    if (flow) {
+      playClip(pickRandom(IDLE_CLIPS), { loop: true });
+      scheduleIdleTimeout(45000);
+    } else {
+      goIdle();
+    }
+  }));
+
+  // ---- Home screen: apps (tap = open, press-and-hold = move / remove) ----
+  let ctxApp = null;
+  let ctxOpenedAt = 0;
+  let longPressTimer = null;
+  let longPressed = false;
+
+  function renderApps() {
+    appsRow.innerHTML = '';
+    APPS.forEach(app => {
+      const el = document.createElement('div');
+      el.className = 'app';
+      el.dataset.name = app.name;
+      el.innerHTML = '<div class="app-icon" style="background:' + app.grad + '">' + iconSvg(app.glyph, 24) + '</div><span class="app-name">' + app.name + '</span>';
+      el.addEventListener('pointerdown', () => {
+        longPressed = false;
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => {
+          longPressed = true;
+          showCtx(el, app);
+          if (flow && flow.def.steps[flow.i].manual && currentHighlighted && el.contains(currentHighlighted)) advanceFlow();
+        }, 600);
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => clearTimeout(longPressTimer)));
+      el.addEventListener('contextmenu', (e) => e.preventDefault());
+      el.addEventListener('click', () => {
+        if (longPressed) { longPressed = false; return; }
+        openApp(app);
+      });
+      appsRow.appendChild(el);
+    });
+  }
+  function restoreApps() { APPS = DEFAULT_APPS.slice(); renderApps(); }
+
+  function showCtx(appEl, app) {
+    ctxApp = app;
+    ctxOpenedAt = Date.now();
+    const r = appEl.getBoundingClientRect();
+    const t = tv.getBoundingClientRect();
+    ctxMenu.style.left = (r.left - t.left) + 'px';
+    ctxMenu.style.top = (r.bottom - t.top + 4) + 'px';
+    ctxMenu.classList.add('open');
+  }
+  document.getElementById('ctxMove').addEventListener('click', () => {
+    const i = ctxApp ? APPS.indexOf(ctxApp) : -1;
+    if (i > -1) { APPS.unshift(APPS.splice(i, 1)[0]); renderApps(); toast('Moved ' + ctxApp.name + ' to the front'); }
+    hideCtx();
+  });
+  document.getElementById('ctxRemove').addEventListener('click', () => {
+    const i = ctxApp ? APPS.indexOf(ctxApp) : -1;
+    if (i > -1) { APPS.splice(i, 1); renderApps(); toast('Removed ' + ctxApp.name + ' from Home'); }
+    hideCtx();
+  });
+  document.addEventListener('click', (e) => {
+    if (ctxMenu.classList.contains('open') && !ctxMenu.contains(e.target) && Date.now() - ctxOpenedAt > 400) hideCtx();
+  });
+
+  function openApp(app) {
+    closeAllPanels();
+    closeScreens();
+    document.getElementById('appHeroIcon').style.background = app.grad;
+    document.getElementById('appHeroIcon').innerHTML = iconSvg(app.glyph, 48);
+    document.getElementById('appHeroName').textContent = app.name;
+    appScreen.classList.add('open');
+  }
+  document.getElementById('appHomeBtn').addEventListener('click', () => appScreen.classList.remove('open'));
+  document.getElementById('navHome').addEventListener('click', () => {
+    cancelFlow();
+    closeAllPanels();
+    closeScreens();
+    hideCtx();
+  });
+
+  // ---- Search: real on-screen keyboard, results come from the films ----
+  let searchQuery = '';
+  function renderSearch() {
+    searchText.textContent = searchQuery;
+    searchResults.innerHTML = '';
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) { searchLabel.textContent = 'Start typing a film name'; return; }
+    const hits = FILMS.filter(f => (f.title + ' ' + (f.keywords || '')).toLowerCase().includes(q));
+    searchLabel.textContent = (hits.length ? 'Results for "' : 'No results for "') + searchQuery + '"';
+    hits.forEach(f => {
+      const wrap = document.createElement('div');
+      wrap.className = 'result';
+      wrap.appendChild(makeFilmTile(f, FILMS.indexOf(f)));
+      const cap = document.createElement('div');
+      cap.className = 'result-title';
+      cap.textContent = f.title;
+      wrap.appendChild(cap);
+      searchResults.appendChild(wrap);
+    });
+  }
+  function openSearch() {
+    closeAllPanels();
+    closeScreens();
+    searchQuery = '';
+    renderSearch();
+    searchScreen.classList.add('open');
+  }
+  function typeKey(v) {
+    if (askScreen.classList.contains('open')) { typeAsk(v); return; }
+    if (v === 'BACK') searchQuery = searchQuery.slice(0, -1);
+    else if (searchQuery.length < 24) searchQuery += v;
+    renderSearch();
+    flowTick('keyboard');
+  }
+  function buildKeyboard() {
+    const kb = document.getElementById('keyboard');
+    function addKey(label, val, cls) {
+      const k = document.createElement('div');
+      k.className = 'kb-key' + (cls ? ' ' + cls : '');
+      k.textContent = label;
+      k.addEventListener('click', () => typeKey(val));
+      kb.appendChild(k);
+    }
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').forEach(ch => addKey(ch, ch));
+    addKey('space', ' ', 'wide6');
+    addKey('⌫', 'BACK', 'wide3');
+  }
+  document.getElementById('navSearch').addEventListener('click', openSearch);
+
+  // ---- Settings and everything under it ----
+  document.getElementById('navSettings').addEventListener('click', () => {
+    if (document.getElementById('settingsPanel').classList.contains('open')) closeAllPanels();
+    else openPanel('settingsPanel');
+  });
+  [['prefItem', 'prefPanel'], ['netItem', 'networkPanel'], ['myfireItem', 'myFirePanel'],
+   ['displayItem', 'displayPanel'], ['parentalItem', 'pinPanel'], ['audioSubItem', 'langPanel']
+  ].forEach(([item, panel]) => document.getElementById(item).addEventListener('click', () => openPanel(panel)));
+  document.querySelectorAll('.panel .back-btn').forEach(b => b.addEventListener('click', () => {
+    closeAllPanels();
+    if (b.dataset.back) openPanel(b.dataset.back);
+    flowBack();
+  }));
+
+  // Network
+  document.querySelectorAll('#networkPanel .panel-item').forEach(item => item.addEventListener('click', () => {
+    document.querySelectorAll('#networkPanel .wifi-state').forEach(s => { s.textContent = ''; });
+    const st = item.querySelector('.wifi-state');
+    st.textContent = '  · Connecting…';
+    setTimeout(() => { st.textContent = '  ✓ Connected'; toast('Connected to ' + item.dataset.ssid); }, 1200);
+  }));
+
+  // My Fire TV > Restart
+  document.getElementById('restartItem').addEventListener('click', () => {
+    closeAllPanels();
+    restartOverlay.classList.add('open');
+    setTimeout(() => { restartOverlay.classList.remove('open'); toast('Fire TV restarted'); }, 2600);
+  });
+
+  // Display & Sounds
+  const RES = ['Auto', '1080p', '4K'];
+  let resIdx = 0;
+  document.getElementById('resItem').addEventListener('click', () => {
+    resIdx = (resIdx + 1) % RES.length;
+    document.getElementById('resVal').textContent = RES[resIdx];
+    toast('Video resolution: ' + RES[resIdx]);
+  });
+  let dolbyOn = true;
+  document.getElementById('dolbyItem').addEventListener('click', () => {
+    dolbyOn = !dolbyOn;
+    document.getElementById('dolbyVal').textContent = dolbyOn ? 'On' : 'Off';
+    toast('Dolby Audio ' + (dolbyOn ? 'on' : 'off'));
+  });
+
+  // Profiles
+  profileBtn.addEventListener('click', () => openPanel('profilePanel'));
+  [['profYash', 'Y', 'Yashraj'], ['guestProfile', 'G', 'Guest'], ['kidsProfile', 'K', 'Kids']].forEach(([id, letter, name]) => {
+    document.getElementById(id).addEventListener('click', () => {
+      profileBtn.textContent = letter;
+      document.querySelectorAll('#profilePanel .prof-state').forEach(s => { s.textContent = ''; });
+      document.querySelector('#' + id + ' .prof-state').textContent = '✓';
+      toast('Switched to ' + name);
+    });
+  });
+
+  // Parental controls PIN
+  let pinDigits = [];
+  function renderPinDots() {
+    document.querySelectorAll('#pinDots .pin-dot').forEach((dot, i) => dot.classList.toggle('filled', i < pinDigits.length));
+  }
+  document.querySelectorAll('.key').forEach(key => key.addEventListener('click', () => {
+    if (key.id === 'keyClear') pinDigits = [];
+    else if (key.id === 'keyBack') pinDigits.pop();
+    else if (pinDigits.length < 4) pinDigits.push(key.textContent);
+    renderPinDots();
+    flowTick('keypad');
+  }));
+  document.getElementById('pinConfirmBtn').addEventListener('click', () => {
+    pinDigits = [];
+    renderPinDots();
+    closeAllPanels();
+    toast('Parental control PIN set');
+  });
+
+  // ---- Playback menu (subtitles tutorial) ----
+  function openMockPlayer() {
+    closeAllPanels();
+    closeScreens();
+    mockSub.textContent = '';
+    document.querySelectorAll('#langPanel .lang-state').forEach(s => { s.textContent = ''; });
+    document.querySelector('#langPanel [data-lang="Off"] .lang-state').textContent = ' ✓';
+    mockPlayer.classList.add('open');
+  }
+  document.getElementById('menuBtn').addEventListener('click', () => openPanel('menuPanel'));
+  document.getElementById('playerExit').addEventListener('click', () => {
+    cancelFlow();
+    closeAllPanels();
+    mockPlayer.classList.remove('open');
+  });
+  document.querySelectorAll('#langPanel .panel-item').forEach(item => item.addEventListener('click', () => {
+    const lang = item.dataset.lang;
+    document.querySelectorAll('#langPanel .lang-state').forEach(s => { s.textContent = ''; });
+    item.querySelector('.lang-state').textContent = ' ✓';
+    mockSub.textContent = LANG_LINES[lang];
+    toast('Subtitles: ' + lang);
+  }));
+
+  // ---- Remote pairing: press and hold Home for 2 seconds ----
+  function openRemote() {
+    closeAllPanels();
+    closeScreens();
+    remoteStatus.textContent = 'Remote not responding';
+    remoteStatus.classList.remove('ok');
+    remoteScreen.classList.add('open');
+  }
+  document.getElementById('remoteExit').addEventListener('click', () => {
+    cancelFlow();
+    remoteScreen.classList.remove('open');
+  });
+  const homeBtn = document.getElementById('homeBtn');
+  let holdTimer = null;
+  homeBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    homeBtn.classList.add('holding');
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      homeBtn.classList.remove('holding');
+      remoteStatus.textContent = 'Remote paired ✓';
+      remoteStatus.classList.add('ok');
+      toast('Remote paired');
+      flowTick('homeBtn');
+    }, 2000);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => homeBtn.addEventListener(ev, () => {
+    clearTimeout(holdTimer);
+    homeBtn.classList.remove('holding');
+  }));
+  homeBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // ---- Films ----
+  function openFilm(film) {
+    hideAvatar({ keepUI: true });
+    playerFrame.src = film.yt
+      ? 'https://www.youtube-nocookie.com/embed/' + film.yt + '?autoplay=1&rel=0&modestbranding=1&playsinline=1'
+      : 'https://drive.google.com/file/d/' + film.drive + '/preview';
+    playerModal.classList.add('open');
+  }
+  function closeFilm() {
+    playerFrame.src = 'about:blank';
+    playerModal.classList.remove('open');
+  }
+  document.getElementById('playerClose').addEventListener('click', closeFilm);
+
+  function filmThumb(f) {
+    if (f.poster) return f.poster;
+    if (f.yt) return 'https://i.ytimg.com/vi/' + f.yt + '/mqdefault.jpg';
+    return 'https://drive.google.com/thumbnail?id=' + f.drive + '&sz=w320';
+  }
+  function makeFilmTile(film, gradIndex) {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.style.background = TILE_GRADIENTS[gradIndex % TILE_GRADIENTS.length];
+    tile.setAttribute('aria-label', film.title);
+    const img = document.createElement('img');
+    img.src = filmThumb(film);
+    img.alt = '';
+    img.onerror = () => {
+      img.remove(); // thumbnail missing: fall back to the title so the tile is not blank
+      const t = document.createElement('span');
+      t.className = 'tile-title';
+      t.textContent = film.title;
+      tile.appendChild(t);
+    };
+    tile.appendChild(img);
+    if (film.age) {
+      const tag = document.createElement('span');
+      tag.className = 'age-tag';
+      tag.textContent = film.age;
+      tile.appendChild(tag);
+    }
+    tile.addEventListener('click', () => {
+      document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
+      tile.classList.add('selected');
+      openFilm(film);
+    });
+    return tile;
+  }
+  function renderFilmRow(containerId, films, startIndex) {
+    const row = document.getElementById(containerId);
+    films.forEach((film, i) => row.appendChild(makeFilmTile(film, startIndex + i)));
+  }
+
+  // ---- Voice: press-to-talk (like holding the real remote's mic button) ----
+  let recognition = null;
+  let heardSomething = false;
+  let listenGuard = null;
+
+  // Back to the idle pose if listening ends with nothing usable.
+  function endListening() {
+    clearTimeout(listenGuard);
+    if (!avatarWrap.classList.contains('listening')) return; // already moved on
+    avatarWrap.classList.remove('listening');
+    goIdle();
+  }
+  function handleUtterance(text) {
+    clearTimeout(listenGuard);
+    avatarWrap.classList.remove('listening');
+    const topic = matchTopic(text);
+    if (topic) {
+      closeSheet();
+      startFlow(topic);
+    } else {
+      goIdle();
+      toast('Not sure about that: tap one of the questions');
+    }
+  }
+  function setupRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return false;
+    recognition = new SR();
+    recognition.continuous = false; // one question per press, like the remote
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.onresult = (e) => {
+      heardSomething = true;
+      const last = e.results[e.results.length - 1];
+      if (last.isFinal) handleUtterance(last[0].transcript);
+    };
+    recognition.onerror = (e) => {
+      console.warn('speech recognition error', e.error);
+      if (!heardSomething) endListening();
+    };
+    recognition.onend = () => {
+      voiceToggle.classList.remove('active');
+      voiceToggle.textContent = '🎤 Press and ask';
+      if (!heardSomething) endListening();
+    };
+    return true;
+  }
+  voiceToggle.addEventListener('click', () => {
+    voiceToggle.classList.remove('hint');   // they found it, stop pointing at it
+    resetUI();
+    openSheet();
+    if (!recognition && !setupRecognition()) {
+      toast("Voice isn't available on this device: type a question or tap one", 3500);
+      goIdle();
+      return;
+    }
+    heardSomething = false;
+    playListeningGesture();
+    voiceToggle.classList.add('active');
+    voiceToggle.textContent = '🎤 Listening…';
+    try {
+      recognition.start();
+    } catch (err) {
+      endListening();
+      return;
+    }
+    clearTimeout(listenGuard);
+    listenGuard = setTimeout(() => {
+      try { recognition.stop(); } catch (e) {}
+      endListening();
+    }, 10000);
+  });
+
+  // ---- remote control (D-pad) navigation: arrows move, OK presses, Back goes back ----
+  const FOCUSABLE = '.nav-item, .chip, #voiceToggle, #profileBtn, .app, .tile, .controls button, .panel .back-btn, .panel-item, .kb-key, .key, .pin-confirm, .screen-btn, #homeBtn, .ctx-item, .player-close, .intro-skip';
+  let kfocus = null;         // the element that shows the remote-control focus ring
+  let kbdMode = false;       // true once keys are being used instead of a mouse or touch
+  let pressed = null;        // OK button held down on a press-and-hold element
+
+  // an element counts only if it is really on screen and not covered by another layer
+  function isNavigable(el) {
+    if (!el || !el.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return false;
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) return false;
+    const top = document.elementFromPoint(cx, cy);
+    return !!top && (top === el || el.contains(top));
+  }
+  function navigables() { return [...document.querySelectorAll(FOCUSABLE)].filter(isNavigable); }
+
+  function setKeyFocus(el) {
+    if (kfocus) kfocus.classList.remove('kfocus');
+    kfocus = el || null;
+    if (!el) return;
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+    el.classList.add('kfocus');
+    el.focus({ preventScroll: true });
+    const row = el.closest('.tile-row');
+    if (row) {
+      const rr = row.getBoundingClientRect(), er = el.getBoundingClientRect();
+      if (er.left < rr.left) row.scrollLeft -= rr.left - er.left + 8;
+      else if (er.right > rr.right) row.scrollLeft += er.right - rr.right + 8;
+    }
+  }
+
+  // the thing a tutorial wants pressed next, if it can take focus
+  function highlightFocusTarget() {
+    const h = currentHighlighted;
+    if (!h) return null;
+    const own = h.closest(FOCUSABLE);
+    const cands = own ? [own] : [...h.querySelectorAll(FOCUSABLE)];
+    return cands.find(isNavigable) || null;
+  }
+  function pickDefault() {
+    const h = highlightFocusTarget();
+    if (h) return h;
+    const order = ['#playerClose', '.ctx-menu.open .ctx-item', '.panel.open .panel-item', '.screen.open .kb-key',
+                   '.screen.open .screen-btn', '.controls.open button.ask', '#voiceToggle'];
+    for (const sel of order) {
+      const el = document.querySelector(sel);
+      if (el && isNavigable(el)) return el;
+    }
+    return navigables()[0] || null;
+  }
+
+  function moveFocus(dir) {
+    if (!kfocus || !isNavigable(kfocus)) { setKeyFocus(pickDefault()); return; }
+    const from = kfocus.getBoundingClientRect();
+    const fx = from.left + from.width / 2, fy = from.top + from.height / 2;
+    const pool = [];
+    for (const el of navigables()) {
+      if (el === kfocus || kfocus.contains(el) || el.contains(kfocus)) continue;
+      const r = el.getBoundingClientRect();
+      const dx = r.left + r.width / 2 - fx, dy = r.top + r.height / 2 - fy;
+      let along, across;
+      if (dir === 'ArrowRight') { if (dx <= 4) continue; along = dx; across = Math.abs(dy); }
+      else if (dir === 'ArrowLeft') { if (dx >= -4) continue; along = -dx; across = Math.abs(dy); }
+      else if (dir === 'ArrowDown') { if (dy <= 4) continue; along = dy; across = Math.abs(dx); }
+      else { if (dy >= -4) continue; along = -dy; across = Math.abs(dx); }
+      pool.push({ el, along, across });
+    }
+    // something slightly to the right but a whole row above is not "to the right":
+    // look inside a narrow cone first, and only widen the search if the cone is empty
+    const cone = pool.filter(c => c.across <= c.along * 1.2);
+    let best = null, bestScore = Infinity;
+    for (const c of (cone.length ? cone : pool)) {
+      const score = c.along + c.across * 2.5;      // prefer staying in a straight line
+      if (score < bestScore) { bestScore = score; best = c.el; }
+    }
+    if (best) setKeyFocus(best);
+  }
+
+  // when OK opens or closes a panel/screen/menu, move focus into what appeared
+  function layerSig() {
+    const p = document.querySelector('.panel.open'), s = document.querySelector('.screen.open');
+    return [playerModal.classList.contains('open'), ctxMenu.classList.contains('open'), p && p.id, s && s.id, sheet.classList.contains('open')].join('|');
+  }
+  const NO_LAYER = 'false|false|||false';     // layerSig() when nothing is open
+  // While a panel is still sliding in, nothing inside it can be hit-tested yet (slow TVs take longer),
+  // so keep trying for a moment instead of dropping the focus on the mic button.
+  function afterActivate(before) {
+    const changed = layerSig() !== before;
+    let tries = 0;
+    const attempt = () => {
+      if (!changed && isNavigable(kfocus)) return;
+      const target = pickDefault();
+      if (changed && layerSig() !== NO_LAYER && (!target || target.id === 'voiceToggle') && tries++ < 10) { setTimeout(attempt, 120); return; }
+      setKeyFocus(target);
+    };
+    setTimeout(attempt, changed ? 250 : 0);
+  }
+  function refocus() {
+    let tries = 0;
+    const attempt = () => {
+      if (isNavigable(kfocus)) return;
+      const target = pickDefault();
+      if (layerSig() !== NO_LAYER && (!target || target.id === 'voiceToggle') && tries++ < 10) { setTimeout(attempt, 120); return; }
+      setKeyFocus(target);
+    };
+    setTimeout(attempt, 250);
+  }
+
+  // returns true if it closed something, false if there was nothing to go back from
+  function goBack() {
+    if (introRunning) { endIntro(true); return true; }
+    if (playerModal.classList.contains('open')) { closeFilm(); return true; }
+    if (ctxMenu.classList.contains('open')) { hideCtx(); return true; }
+    const panel = document.querySelector('.panel.open');
+    if (panel) { const b = panel.querySelector('.back-btn'); if (b) b.click(); else closeAllPanels(); return true; }
+    if (askScreen.classList.contains('open')) { askScreen.classList.remove('open'); abortAsk(); stopAnswerAudio(); if (avatarWrap.classList.contains('visible')) goIdle(); return true; }
+    if (searchScreen.classList.contains('open')) { searchScreen.classList.remove('open'); cancelFlow(); return true; }
+    if (appScreen.classList.contains('open')) { document.getElementById('appHomeBtn').click(); return true; }
+    if (mockPlayer.classList.contains('open')) { document.getElementById('playerExit').click(); return true; }
+    if (remoteScreen.classList.contains('open')) { document.getElementById('remoteExit').click(); return true; }
+    if (sheet.classList.contains('open')) { closeSheet(); return true; }
+    if (avatarWrap.classList.contains('visible')) { hideAvatar(); return true; }
+    return false;
+  }
+  // hooks for the Fire TV app shell: the remote's Back and Menu buttons call these
+  window.tvBack = () => {
+    kbdMode = true;
+    const handled = goBack();
+    refocus();
+    return handled;
+  };
+  window.tvMenu = () => {
+    kbdMode = true;
+    const before = layerSig();
+    voiceToggle.click();
+    afterActivate(before);
+  };
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.isTrusted) return;           // ignore the presses we generate ourselves
+    kbdMode = false;
+    setKeyFocus(null);
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    const k = e.key;
+    const typing = searchScreen.classList.contains('open') || askScreen.classList.contains('open');
+
+    // any key while the intro plays skips it and points at the mic button
+    if (introRunning) { e.preventDefault(); kbdMode = true; endIntro(true); setKeyFocus(voiceToggle); return; }
+
+    if (k === 'Escape' || k === 'BrowserBack' || k === 'GoBack' || (k === 'Backspace' && !typing)) {
+      e.preventDefault(); kbdMode = true; goBack();
+      refocus();
+      return;
+    }
+    if (k === 'ContextMenu' || k === 'F1') {      // the remote's Menu button opens help
+      e.preventDefault(); kbdMode = true;
+      const before = layerSig(); voiceToggle.click(); afterActivate(before);
+      return;
+    }
+    if (k.startsWith('Arrow')) { e.preventDefault(); kbdMode = true; physicalTyping = false; moveFocus(k); return; }
+
+    if (typing && k === 'Backspace') { typeKey('BACK'); return; }
+    if (typing && k.length === 1 && /[a-z0-9 ?'.,]/i.test(k)) {
+      e.preventDefault();
+      if (askScreen.classList.contains('open')) physicalTyping = true;
+      typeKey(k.toUpperCase());
+      return;
+    }
+    // Enter sends the question when it was typed on a real keyboard, or when no key is focused
+    if (k === 'Enter' && askScreen.classList.contains('open') && (physicalTyping || !(kfocus && isNavigable(kfocus)))) {
+      e.preventDefault(); submitAsk(); return;
+    }
+
+    if (k === 'Enter' || k === ' ') {
+      e.preventDefault();
+      if (e.repeat) return;
+      kbdMode = true;
+      if (!kfocus || !isNavigable(kfocus)) setKeyFocus(pickDefault());
+      const el = kfocus;
+      if (!el) return;
+      const before = layerSig();
+      if (el.matches('.app, #homeBtn')) {          // these react to press-and-hold
+        pressed = { el, at: Date.now(), before };
+        el.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      } else {
+        el.click();
+        afterActivate(before);
+      }
+    }
+  });
+  document.addEventListener('keyup', (e) => {
+    if ((e.key !== 'Enter' && e.key !== ' ') || !pressed) return;
+    const { el, at, before } = pressed;
+    pressed = null;
+    el.dispatchEvent(new Event('pointerup', { bubbles: true }));
+    if (el.classList.contains('app')) {
+      if (Date.now() - at < 600) el.click(); else longPressed = false;   // a long press already opened the menu
+    }
+    afterActivate(before);
+  });
+
+  // ---- Ask anything: a typed question. Amazon Bedrock decides which recorded tutorial fits,
+  //      or writes a fresh answer that Amazon Polly speaks. ----
+  const DEBUG = /[?&]debug/.test(location.search);
+  const askScreen = document.getElementById('askScreen');
+  const askText = document.getElementById('askText');
+  const askAnswer = document.getElementById('askAnswer');
+  const askSource = document.getElementById('askSource');
+  const ASK_TALK_CLIP = 'features';      // she "talks" with this clip (muted) while the spoken answer plays
+  const ASK_CHIPS = ['Why does my video keep buffering?', 'Bachchon ke liye content kaise block karun?', 'What is the difference between HD and 4K?'];
+  let askUrl = '/api/ask';               // overridden by config.json, see loadConfig()
+  let askQuery = '';
+  let askBusy = false;
+  let askController = null;
+  let answerAudio = null;
+  let physicalTyping = false;            // letters typed on a real keyboard, so Enter means "send"
+
+  function loadConfig() {
+    try {
+      fetch('config.json', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(c => { if (c && typeof c.askUrl === 'string' && /^https?:\/\//.test(c.askUrl)) askUrl = c.askUrl; })
+        .catch(() => {});
+    } catch (e) { /* no fetch available: keep the default address */ }
+  }
+  // picking a question (or typing one) ends any voice listening that was running
+  function stopListening() {
+    clearTimeout(listenGuard);
+    if (recognition) { try { recognition.abort(); } catch (e) {} }
+    voiceToggle.classList.remove('active');
+    voiceToggle.textContent = '🎤 Press and ask';
+    avatarWrap.classList.remove('listening');
+  }
+  function renderAsk() { askText.textContent = askQuery; }
+  function stopAnswerAudio() {
+    if (answerAudio) { answerAudio.onended = null; answerAudio.pause(); answerAudio = null; }
+  }
+  function abortAsk() {
+    if (askController) { askController.abort(); askController = null; }
+    askBusy = false;
+  }
+  function openAsk() {
+    stopListening();
+    closeAllPanels();
+    closeScreens();
+    closeSheet();
+    stopAnswerAudio();
+    abortAsk();
+    askQuery = '';
+    physicalTyping = false;
+    renderAsk();
+    askAnswer.className = 'ask-answer';
+    askAnswer.textContent = '';
+    askSource.textContent = '';
+    askScreen.classList.add('open');
+  }
+  function typeAsk(v) {
+    if (v === 'ASK') { submitAsk(); return; }
+    if (askBusy) return;
+    if (v === 'BACK') askQuery = askQuery.slice(0, -1);
+    else if (askQuery.length < 120) askQuery += v;
+    renderAsk();
+  }
+  function buildAskKeyboard() {
+    const kb = document.getElementById('askKeyboard');
+    function addKey(label, val, cls) {
+      const k = document.createElement('div');
+      k.className = 'kb-key' + (cls ? ' ' + cls : '');
+      k.textContent = label;
+      k.addEventListener('click', () => typeKey(val));
+      kb.appendChild(k);
+    }
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').forEach(ch => addKey(ch, ch));
+    addKey('?', '?'); addKey("'", "'");
+    addKey('space', ' ', 'wide3');
+    addKey('⌫', 'BACK', 'wide2');
+    addKey('Ask', 'ASK', 'wide2 ask-key');
+  }
+  function renderAskChips() {
+    const wrap = document.getElementById('askChips');
+    ASK_CHIPS.forEach(text => {
+      const c = document.createElement('div');
+      c.className = 'chip';
+      c.textContent = text;
+      c.addEventListener('click', () => { askQuery = text; renderAsk(); submitAsk(); });
+      wrap.appendChild(c);
+    });
+  }
+
+  // if the assistant cannot be reached, the app still routes obvious questions itself
+  function localAnswer(q, err) {
+    const topic = matchTopic(q);
+    if (topic) return { type: 'clip', topic, source: 'local' };
+    return { type: 'answer', text: "I couldn't reach the assistant. Please try one of the suggested questions.", source: 'offline', error: String((err && err.message) || err) };
+  }
+
+  async function submitAsk() {
+    const q = askQuery.trim();
+    if (!q || askBusy) return;
+    physicalTyping = false;
+    stopAnswerAudio();
+    askBusy = true;
+    askAnswer.className = 'ask-answer thinking';
+    askAnswer.textContent = 'Thinking…';
+    askSource.textContent = '';
+    clearTimeout(idleTimeout);
+    avatarWrap.classList.add('visible');
+    playClip(pickRandom(LISTENING_CLIPS), { loop: true });   // she listens while the answer is on its way
+
+    const ctrl = new AbortController();
+    askController = ctrl;
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    let result;
+    try {
+      const res = await fetch(askUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q }),
+        signal: ctrl.signal
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      result = await res.json();
+    } catch (err) {
+      if (askController !== ctrl) return;   // they pressed Back or started something else meanwhile
+      result = localAnswer(q, err);
+    } finally {
+      clearTimeout(timer);
+    }
+    if (askController !== ctrl) return;
+    askController = null;
+    askBusy = false;
+    handleAskResult(result);
+  }
+
+  function handleAskResult(r) {
+    askAnswer.className = 'ask-answer';
+    if (r && r.type === 'clip' && FLOWS[r.topic]) {      // a recorded tutorial fits: play it
+      askScreen.classList.remove('open');
+      startFlow(r.topic);
+      return;
+    }
+    const text = (r && r.text) || 'Sorry, I have no answer for that.';
+    askAnswer.textContent = text;
+    let src = r && r.source === 'bedrock' ? 'Answered by Amazon Bedrock' + (r.audio ? ' · spoken by Amazon Polly' : '') : (r && r.audio ? 'Spoken by Amazon Polly' : 'Fire TV assistant');
+    if (DEBUG && r) src += ' · ' + [r.bedrock_error, r.audio_error, r.error].filter(Boolean).join(' · ');
+    askSource.textContent = src;
+    speakAnswer(r);
+  }
+
+  function speakAnswer(r) {
+    avatarWrap.classList.add('visible');
+    if (!r || !r.audio) { goIdle(); return; }
+    const a = new Audio('data:audio/mpeg;base64,' + r.audio);
+    answerAudio = a;
+    playClip(ASK_TALK_CLIP, { loop: true, muted: true });  // talking motion; the voice is Polly's
+    a.onended = () => { if (answerAudio === a) { answerAudio = null; goIdle(); } };
+    a.onerror = () => { if (answerAudio === a) { answerAudio = null; goIdle(); } };
+    const p = a.play();
+    if (p && p.catch) p.catch(() => { if (answerAudio === a) { answerAudio = null; goIdle(); } });
+  }
+
+  // ---- the tutorials ----
+  const RESTART_STEPS = [{ target: '#navSettings' }, { target: '#myfireItem' }, { target: '#restartItem' }];
+  const FLOWS = {
+    search:      { clip: 'search', steps: [{ target: '#navSearch' }, { target: '#keyboard', manual: true }, { target: '#searchResults' }] },
+    apps:        { clip: 'apps', steps: [{ target: '#appsRow' }, { target: '#appHomeBtn' }] },
+    rearrange:   { clip: 'rearrange', setup: restoreApps, steps: [{ target: () => document.querySelector('.app[data-name="Kiddo"] .app-icon'), manual: true }, { target: '#ctxMove' }] },
+    wifi:        { clip: 'wifi', steps: [{ target: '#navSettings' }, { target: '#netItem' }, { target: '#wifiHome' }] },
+    display:     { clip: 'display', steps: [{ target: '#navSettings' }, { target: '#displayItem' }, { target: '#resItem' }] },
+    restart:     { clip: 'restart', steps: RESTART_STEPS },
+    buffering:   { clip: 'buffering', steps: RESTART_STEPS },
+    profiles:    { clip: 'profiles', steps: [{ target: '#profileBtn' }, { target: '#kidsProfile' }] },
+    subtitles:   { clip: 'subtitles', setup: openMockPlayer, steps: [{ target: '#menuBtn' }, { target: '#audioSubItem' }, { target: '#hindiItem' }] },
+    remote:      { clip: 'remote', setup: openRemote, steps: [{ target: '#homeBtn', manual: true }] },
+    voicesearch: { clip: 'voicesearch', steps: [{ target: '#voiceToggle' }] },
+    parental:    { clip: 'parental_a', steps: [{ target: '#navSettings' }, { target: '#prefItem' }, { target: '#parentalItem' }, { target: '#keypad', manual: true, clip: 'parental_b' }, { target: '#pinConfirmBtn' }] }
+  };
+
+  // ---- first open: remote animation, then the mic button glows for 5 seconds ----
+  const intro = document.getElementById('intro');
+  const introVideo = document.getElementById('introVideo');
+  const introBloom = document.getElementById('introBloom');
+  let introRunning = false;
+  let introCancelled = false;
+  let hintTimer = null;
+
+  function glowMic(ms) {
+    voiceToggle.classList.add('hint');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => voiceToggle.classList.remove('hint'), ms);
+  }
+  function endIntro(showHint) {
+    if (!introRunning) return;
+    introRunning = false;
+    introVideo.pause();
+    introBloom.pause();
+    intro.classList.remove('show');
+    if (showHint) glowMic(5000);
+    preloadClips();
+  }
+  function introFailed() {
+    console.warn('intro clip could not be loaded');
+    fetch(VIDEOS.remote_intro, { method: 'HEAD' })
+      .then(r => toast(r.ok ? 'Intro clip found, but the browser blocked playback'
+                            : 'Intro clip missing on the server (HTTP ' + r.status + '): upload remote_intro.webm', 7000))
+      .catch(() => toast('Intro clip could not be reached', 7000));
+    endIntro(true);
+  }
+  function startIntro() {
+    if (introCancelled) return;
+    if (!VIDEOS.remote_intro) { glowMic(5000); return; }
+    introRunning = true;
+    introVideo.src = VIDEOS.remote_intro;
+    introBloom.src = VIDEOS.remote_intro;
+    introBloom.muted = true;
+    introVideo.addEventListener('error', introFailed, { once: true });
+    introVideo.addEventListener('ended', () => endIntro(true));
+    introVideo.addEventListener('playing', () => {
+      introBloom.currentTime = introVideo.currentTime;
+      const b = introBloom.play();
+      if (b && b.catch) b.catch(() => {});
+    }, { once: true });
+    introVideo.addEventListener('timeupdate', () => {
+      if (Math.abs(introBloom.currentTime - introVideo.currentTime) > 0.15) introBloom.currentTime = introVideo.currentTime;
+    });
+    intro.classList.add('show');
+    // sound if the browser allows it, otherwise play silently
+    introVideo.muted = false;
+    const p = introVideo.play();
+    if (p && p.catch) {
+      p.catch(() => {
+        introVideo.muted = true;
+        const q = introVideo.play();
+        if (q && q.catch) q.catch(introFailed);
+      });
+    }
+    setTimeout(() => endIntro(true), 12000); // safety: never get stuck on the intro
+  }
+  document.getElementById('introSkip').addEventListener('click', (e) => { e.stopPropagation(); endIntro(true); });
+  // touching anything else means they already know what to do, so no hint
+  document.addEventListener('click', () => { introCancelled = true; endIntro(false); });
+
+  // ---- start up ----
+  syncNavHeight();
+  window.addEventListener('resize', syncNavHeight);
+  window.addEventListener('load', syncNavHeight);
+  renderApps();
+  buildKeyboard();
+  buildAskKeyboard();
+  renderAskChips();
+  loadConfig();
+  renderFilmRow('filmRow1', FILMS.slice(0, 6), 0);
+  renderFilmRow('filmRow2', FILMS.slice(6), 6);
+  setTimeout(startIntro, 300);
+  setTimeout(preloadClips, 4000);
+
+</script>
+
+</body>
+</html>
